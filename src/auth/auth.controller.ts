@@ -3,55 +3,43 @@ import {
   Controller,
   Delete,
   Get,
-  Param,
-  Patch,
   Post,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
-import { AuthJWTGuat } from './auth-jwt.guard';
+import { Response } from 'express';
+import { AuthGuard, ReqAuth } from './auth-jwt.guard';
 import { AuthService } from './auth.service';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { SignInDto } from './dto/sign-in.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('sign-up')
-  signup(@Body() createAuthDto: CreateAuthDto) {
+  // Password auth
+  @Post('password/sign-up')
+  signupPassword(@Body() createAuthDto: CreateAuthDto) {
     return this.authService.create(createAuthDto);
   }
 
-  @UseGuards(AuthJWTGuat)
-  @Get('me')
-  me(@Req() req) {
-    return req.user;
-  }
-
-  @Post('sign-in')
-  signIn(@Body() body: SignInDto) {
+  @Post('password/sign-in')
+  signInPassword(@Body() body: SignInDto) {
     return this.authService.singIn(body.email, body.password);
   }
 
-  @Get()
-  findAll() {
-    return this.authService.findAll();
+  @UseGuards(AuthGuard)
+  @Get('me')
+  me(@Req() req: ReqAuth) {
+    return this.authService.user;
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.authService.findOne(+id);
-  }
+  @UseGuards(AuthGuard)
+  @Delete('password/sign-out')
+  async signOutPassword(@Req() req: ReqAuth, @Res() res: Response) {
+    await this.authService.signOut();
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAuthDto: UpdateAuthDto) {
-    return this.authService.update(+id, updateAuthDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.authService.remove(+id);
+    res.status(204).send();
   }
 }

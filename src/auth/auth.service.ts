@@ -2,12 +2,12 @@ import {
   HttpException,
   HttpExceptionOptions,
   Injectable,
+  Scope,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model } from 'mongoose';
 import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
 import { Token, TokenDocument } from './entities/token.schema';
 import { User, UserDocument } from './entities/user.schema';
 import { HashService } from './hash.service';
@@ -43,7 +43,9 @@ class AuthenticationException extends HttpException {
 
 const TOKEN_PREVIEW_LENGTH = 8;
 
-@Injectable()
+@Injectable({
+  scope: Scope.REQUEST,
+})
 export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
@@ -52,6 +54,17 @@ export class AuthService {
     private readonly passwordService: PasswordService,
     private readonly jwt: JwtService,
   ) {}
+
+  private _token: TokenDocument | null = null;
+  private _user: UserDocument | null = null;
+
+  get token() {
+    return this._token;
+  }
+
+  get user() {
+    return this._user;
+  }
 
   async validateApiToken({
     userId,
@@ -88,6 +101,9 @@ export class AuthService {
     if (!user) {
       throw AuthenticationException.notAuthorized();
     }
+
+    this._token = token;
+    this._user = user;
 
     return user;
   }
@@ -143,13 +159,6 @@ export class AuthService {
     };
   }
 
-  async authenticate(token: string) {
-    // extract tokenId and user id from token
-    // find token by id and expiration date and user id
-    // compare token with hashed token and preview chars
-    // return user
-  }
-
   async create(createAuthDto: CreateAuthDto) {
     return this.userModel.create({
       email: createAuthDto.email,
@@ -157,19 +166,9 @@ export class AuthService {
     });
   }
 
-  findAll() {
-    return `This action returns all auth`;
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} auth`;
-  }
-
-  update(id: number, updateAuthDto: UpdateAuthDto) {
-    return `This action updates a #${id} auth`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} auth`;
+  signOut() {
+    return this.tokenModel.findOneAndDelete({
+      _id: this.token._id,
+    });
   }
 }

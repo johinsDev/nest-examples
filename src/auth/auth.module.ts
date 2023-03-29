@@ -7,18 +7,11 @@ import { AuthService } from './auth.service';
 import { TokenSchema } from './entities/token.schema';
 import { UserSchema } from './entities/user.schema';
 import { HashService } from './hash.service';
-import { JwtStrategy } from './jwt.strategy';
 import { PasswordService } from './password.service';
 
 @Module({
   controllers: [AuthController],
-  providers: [
-    UniqueEmail,
-    AuthService,
-    HashService,
-    PasswordService,
-    JwtStrategy,
-  ],
+  providers: [UniqueEmail, AuthService, HashService, PasswordService],
   imports: [
     MongooseModule.forFeature([
       { name: 'User', schema: UserSchema },
