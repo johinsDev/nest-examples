@@ -1,45 +1,13 @@
-import {
-  HttpException,
-  HttpExceptionOptions,
-  Injectable,
-  Scope,
-} from '@nestjs/common';
+import { Injectable, Scope } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model } from 'mongoose';
-import { CreateAuthDto } from './dto/create-auth.dto';
+import { AuthenticationException } from './auth.exception';
+import { CreateAuthDto } from './dto/create-auth-password.dto';
 import { Token, TokenDocument } from './entities/token.schema';
 import { User, UserDocument } from './entities/user.schema';
 import { HashService } from './hash.service';
 import { PasswordService } from './password.service';
-
-class AuthenticationException extends HttpException {
-  constructor(
-    response: string | Record<string, any>,
-    status: number,
-    options?: HttpExceptionOptions,
-  ) {
-    super(response, status, options);
-  }
-
-  static invalidPassword() {
-    return new AuthenticationException('Invalid password', 401, {
-      description: 'Invalid password',
-    });
-  }
-
-  static userNotFound() {
-    return new AuthenticationException('User not found', 404, {
-      description: 'User not found',
-    });
-  }
-
-  static notAuthorized() {
-    return new AuthenticationException('Not authorized', 401, {
-      description: 'Not authorized',
-    });
-  }
-}
 
 const TOKEN_PREVIEW_LENGTH = 8;
 
