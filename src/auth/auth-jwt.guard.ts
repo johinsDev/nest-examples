@@ -39,7 +39,7 @@ export class AuthGuard implements CanActivate {
         return false;
       }
 
-      const user = await this.authService.validateApiToken({
+      const user = await this.authService.authenticate({
         userId: payload.userId,
         tokenId: payload.tokenId,
         token,

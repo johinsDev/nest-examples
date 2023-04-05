@@ -1,13 +1,18 @@
 import { Injectable, Scope } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model } from 'mongoose';
+import {
+  EVENT_AUTHENTICATED,
+  EVENT_LOGGED_OUT,
+  EVENT_LOGIN,
+} from './auth.constants';
 import { AuthenticationException } from './auth.exception';
 import { CreateAuthDto } from './dto/create-auth-password.dto';
 import { LoginToken, LoginTokenDocument } from './entities/token.schema';
 import { User, UserDocument } from './entities/user.schema';
 import { HashService } from './hash.service';
-import { PasswordService } from './password.service';
 
 const TOKEN_PREVIEW_LENGTH = 8;
 
@@ -19,16 +24,24 @@ export class AuthService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(LoginToken.name) private tokenModel: Model<LoginTokenDocument>,
     private readonly hashService: HashService,
-    private readonly passwordService: PasswordService,
     private readonly jwt: JwtService,
+    private emitter: EventEmitter2,
   ) {}
 
   public token: LoginTokenDocument | null = null;
   public user: UserDocument | null = null;
   public isLoggedOut = false;
   public isAuthenticated = false;
+  public authenticationAttempted = false;
 
-  async validateApiToken({
+  private getLoginEventData(user: UserDocument, token: LoginTokenDocument) {
+    return {
+      user,
+      token,
+    };
+  }
+
+  async authenticate({
     userId,
     tokenId,
     token: tokenProp,
@@ -37,6 +50,12 @@ export class AuthService {
     tokenId: string;
     token: string;
   }) {
+    if (this.authenticationAttempted) {
+      return this.user;
+    }
+
+    this.authenticationAttempted = true;
+
     const token = await this.tokenModel.findOne({
       _id: tokenId,
       user: userId,
@@ -47,10 +66,7 @@ export class AuthService {
       throw AuthenticationException.notAuthorized();
     }
 
-    const isValid = await this.passwordService.validatePassword(
-      tokenProp,
-      token.token,
-    );
+    const isValid = await this.hashService.compare(tokenProp, token.token);
 
     if (!isValid) {
       throw AuthenticationException.notAuthorized();
@@ -63,6 +79,8 @@ export class AuthService {
     }
 
     this.markUserAsLoggedIn(user, token);
+
+    this.emitter.emit(EVENT_AUTHENTICATED, this.getLoginEventData(user, token));
 
     return user;
   }
@@ -90,7 +108,7 @@ export class AuthService {
     const previewChars = token.slice(-TOKEN_PREVIEW_LENGTH);
 
     // hash token
-    const hashedToken = await this.passwordService.hashPassword(token);
+    const hashedToken = await this.hashService.hash(token);
 
     const apiToken = await this.tokenModel.create({
       _id: tokenId,
@@ -107,16 +125,13 @@ export class AuthService {
 
     this.markUserAsLoggedIn(user, apiToken, true);
 
+    this.emitter.emit(EVENT_LOGIN, this.getLoginEventData(user, apiToken));
+
     return {
       token: apiToken.token,
       expiresAt: apiToken.expiresAt,
       meta: apiToken.meta,
     };
-
-    //     /**
-    //  * Emit login event. It can be used to track user logins.
-    //  */
-    //     this.emitter.emit('adonis:api:login', this.getLoginEventData(providerUser.user, apiToken))
   }
 
   async attempt(email: string, password: string) {
@@ -132,7 +147,7 @@ export class AuthService {
     }
 
     // compare password (password service)
-    const isValidPassword = await this.passwordService.validatePassword(
+    const isValidPassword = await this.hashService.compare(
       password,
       user.password,
     );
@@ -156,9 +171,23 @@ export class AuthService {
     };
   }
 
-  signOut() {
-    return this.tokenModel.findOneAndDelete({
+  private markUserAsLoggedOut() {
+    this.token = null;
+    this.user = null;
+    this.isLoggedOut = true;
+    this.isAuthenticated = false;
+  }
+
+  async signOut() {
+    await this.tokenModel.findOneAndDelete({
       _id: this.token._id,
     });
+
+    this.markUserAsLoggedOut();
+
+    this.emitter.emit(
+      EVENT_LOGGED_OUT,
+      this.getLoginEventData(this.user, this.token),
+    );
   }
 }

@@ -8,10 +8,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Response } from 'express';
-import { AuthGuard } from './auth-jwt.guard';
-import { AuthService } from './auth.service';
-import { CreateAuthDto } from './dto/create-auth-password.dto';
-import { SignInDto } from './dto/sign-in.dto';
+import { AuthGuard } from '../auth-jwt.guard';
+import { AuthService } from '../auth.service';
+import { CreateAuthDto } from '../dto/create-auth-password.dto';
+import { SignInDto } from '../dto/sign-in.dto';
 
 @Controller('auth/password')
 export class AuthPasswordController {

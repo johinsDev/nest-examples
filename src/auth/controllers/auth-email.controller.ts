@@ -1,10 +1,10 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
-import { AuthEmailService } from './auth-email.service';
+import { AuthEmailService } from '../auth-email.service';
 import {
   CreateAuthEmailDto,
   SingInAuthEmailDto,
   VerifyAuthEmailDto,
-} from './dto/auth-email.dto';
+} from '../dto/auth-email.dto';
 
 @Controller('auth/email')
 export class AuthEmailController {
