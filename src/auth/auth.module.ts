@@ -5,15 +5,16 @@ import { UniqueEmail } from 'src/validation/unique-email';
 import { AuthEmailController } from './auth-email.controller';
 import { AuthEmailService } from './auth-email.service';
 import { AuthPasswordController } from './auth-password.controller';
+import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { LoginTokenSchema } from './entities/login-token.schema';
-import { TokenSchema } from './entities/token.schema';
-import { UserSchema } from './entities/user.schema';
+import { LoginToken, LoginTokenSchema } from './entities/token.schema';
+import { User, UserSchema } from './entities/user.schema';
+import { VerifyToken, VerifyTokenSchema } from './entities/verify-token.schema';
 import { HashService } from './hash.service';
 import { PasswordService } from './password.service';
 
 @Module({
-  controllers: [AuthPasswordController, AuthEmailController],
+  controllers: [AuthPasswordController, AuthEmailController, AuthController],
   providers: [
     UniqueEmail,
     AuthEmailService,
@@ -23,13 +24,13 @@ import { PasswordService } from './password.service';
   ],
   imports: [
     MongooseModule.forFeature([
-      { name: 'User', schema: UserSchema },
+      { name: User.name, schema: UserSchema },
       {
-        name: 'Token',
-        schema: TokenSchema,
+        name: VerifyToken.name,
+        schema: VerifyTokenSchema,
       },
       {
-        name: 'LoginToken',
+        name: LoginToken.name,
         schema: LoginTokenSchema,
       },
     ]),

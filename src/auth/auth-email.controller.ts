@@ -17,7 +17,7 @@ export class AuthEmailController {
 
   @Post('/sign-in')
   signin(@Body() body: SingInAuthEmailDto) {
-    return this.authService.signin(body);
+    return this.authService.attempt(body);
   }
 
   @Get('/verify')

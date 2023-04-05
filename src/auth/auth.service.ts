@@ -4,7 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model } from 'mongoose';
 import { AuthenticationException } from './auth.exception';
 import { CreateAuthDto } from './dto/create-auth-password.dto';
-import { Token, TokenDocument } from './entities/token.schema';
+import { LoginToken, LoginTokenDocument } from './entities/token.schema';
 import { User, UserDocument } from './entities/user.schema';
 import { HashService } from './hash.service';
 import { PasswordService } from './password.service';
@@ -17,22 +17,16 @@ const TOKEN_PREVIEW_LENGTH = 8;
 export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
-    @InjectModel(Token.name) private tokenModel: Model<TokenDocument>,
+    @InjectModel(LoginToken.name) private tokenModel: Model<LoginTokenDocument>,
     private readonly hashService: HashService,
     private readonly passwordService: PasswordService,
     private readonly jwt: JwtService,
   ) {}
 
-  private _token: TokenDocument | null = null;
-  private _user: UserDocument | null = null;
-
-  get token() {
-    return this._token;
-  }
-
-  get user() {
-    return this._user;
-  }
+  public token: LoginTokenDocument | null = null;
+  public user: UserDocument | null = null;
+  public isLoggedOut = false;
+  public isAuthenticated = false;
 
   async validateApiToken({
     userId,
@@ -62,38 +56,29 @@ export class AuthService {
       throw AuthenticationException.notAuthorized();
     }
 
-    const user = await this.userModel
-      .findOne({ _id: token.user })
-      .select(['-password', '-__v', '-createdAt', '-updatedAt']);
+    const user = await this.userModel.findOne({ _id: token.user });
 
     if (!user) {
       throw AuthenticationException.notAuthorized();
     }
 
-    this._token = token;
-    this._user = user;
+    this.markUserAsLoggedIn(user, token);
 
     return user;
   }
 
-  async singIn(email: string, password: string) {
-    // find user by email
-    const user = await this.userModel.findOne({ email });
+  protected markUserAsLoggedIn(
+    user: UserDocument,
+    apiToken: LoginTokenDocument,
+    authenticated?: boolean,
+  ) {
+    this.token = apiToken;
+    this.user = user;
+    this.isLoggedOut = false;
+    this.isAuthenticated = authenticated ?? false;
+  }
 
-    if (!user) {
-      throw AuthenticationException.userNotFound();
-    }
-
-    // compare password (password service)
-    const isValidPassword = await this.passwordService.validatePassword(
-      password,
-      user.password,
-    );
-
-    if (!isValidPassword) {
-      throw AuthenticationException.invalidPassword();
-    }
-
+  async login(user: UserDocument): Promise<any> {
     // create jwt token
     const tokenId = new mongoose.Types.ObjectId();
 
@@ -120,18 +105,55 @@ export class AuthService {
 
     apiToken.token = token;
 
+    this.markUserAsLoggedIn(user, apiToken, true);
+
     return {
       token: apiToken.token,
       expiresAt: apiToken.expiresAt,
       meta: apiToken.meta,
     };
+
+    //     /**
+    //  * Emit login event. It can be used to track user logins.
+    //  */
+    //     this.emitter.emit('adonis:api:login', this.getLoginEventData(providerUser.user, apiToken))
+  }
+
+  async attempt(email: string, password: string) {
+    if (!email || !password) {
+      throw AuthenticationException.invalidUid();
+    }
+
+    // find user by email
+    const user = await this.userModel.findOne({ email }).select('+password');
+
+    if (!user) {
+      throw AuthenticationException.userNotFound();
+    }
+
+    // compare password (password service)
+    const isValidPassword = await this.passwordService.validatePassword(
+      password,
+      user.password,
+    );
+
+    if (!isValidPassword) {
+      throw AuthenticationException.invalidPassword();
+    }
+
+    return this.login(user);
   }
 
   async create(createAuthDto: CreateAuthDto) {
-    return this.userModel.create({
+    const user = await this.userModel.create({
       email: createAuthDto.email,
       password: await this.hashService.hash(createAuthDto.password),
     });
+
+    return {
+      email: user.email,
+      name: user.name,
+    };
   }
 
   signOut() {

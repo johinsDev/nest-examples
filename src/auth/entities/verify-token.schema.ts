@@ -2,12 +2,12 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument } from 'mongoose';
 import { User } from './user.schema';
 
-export type LoginTokenDocument = HydratedDocument<LoginToken>;
+export type VerifyTokenDocument = HydratedDocument<VerifyToken>;
 
 @Schema({
   timestamps: true,
 })
-export class LoginToken {
+export class VerifyToken {
   @Prop({
     unique: true,
     index: true,
@@ -23,4 +23,4 @@ export class LoginToken {
   expiresAt: Date;
 }
 
-export const LoginTokenSchema = SchemaFactory.createForClass(LoginToken);
+export const VerifyTokenSchema = SchemaFactory.createForClass(VerifyToken);

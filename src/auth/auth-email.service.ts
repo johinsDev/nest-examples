@@ -5,9 +5,13 @@ import * as dayjs from 'dayjs';
 import mongoose, { Model } from 'mongoose';
 import * as ms from 'ms';
 import { AuthenticationException } from './auth.exception';
+import { AuthService } from './auth.service';
 import { CreateAuthEmailDto, VerifyAuthEmailDto } from './dto/auth-email.dto';
-import { LoginToken, LoginTokenDocument } from './entities/login-token.schema';
 import { User, UserDocument } from './entities/user.schema';
+import {
+  VerifyToken,
+  VerifyTokenDocument,
+} from './entities/verify-token.schema';
 import { HashService } from './hash.service';
 
 const EXPIRES_IN = '1h';
@@ -21,10 +25,11 @@ type TokenPayload = {
 export class AuthEmailService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
-    @InjectModel(LoginToken.name)
-    private loginTokenModel: Model<LoginTokenDocument>,
+    @InjectModel(VerifyToken.name)
+    private verifyTokenModel: Model<VerifyTokenDocument>,
     private readonly hashService: HashService,
     private readonly jwt: JwtService,
+    private readonly authService: AuthService,
   ) {}
 
   private async createToken(user: UserDocument) {
@@ -39,7 +44,7 @@ export class AuthEmailService {
 
     const hashedToken = await this.hashService.hash(token);
 
-    const apiToken = await this.loginTokenModel.create({
+    const apiToken = await this.verifyTokenModel.create({
       user: user._id,
       token: hashedToken,
       expiresAt: dayjs().add(ms(EXPIRES_IN), 'ms'),
@@ -58,7 +63,7 @@ export class AuthEmailService {
 
     const { tokenId } = this.jwt.decode(token) as TokenPayload;
 
-    const loginToken = await this.loginTokenModel.findOne({
+    const loginToken = await this.verifyTokenModel.findOne({
       _id: tokenId,
     });
 
@@ -88,16 +93,10 @@ export class AuthEmailService {
 
     await loginToken.deleteOne();
 
-    return {
-      token,
-      user: {
-        id: user._id,
-        email: user.email,
-      },
-    };
+    return this.authService.login(user);
   }
 
-  async signin(data: CreateAuthEmailDto) {
+  async attempt(data: CreateAuthEmailDto) {
     const user = await this.userModel.findOne({
       email: data.email,
     });
@@ -106,11 +105,11 @@ export class AuthEmailService {
       throw AuthenticationException.userNotFound();
     }
 
-    const tokens = this.loginTokenModel.find({
-      user: user._id,
-    });
-
-    await tokens.deleteMany();
+    await this.verifyTokenModel
+      .find({
+        user: user._id,
+      })
+      .deleteMany();
 
     const token = await this.createToken(user);
 

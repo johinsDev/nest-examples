@@ -9,6 +9,12 @@ export class AuthenticationException extends HttpException {
     super(response, status, options);
   }
 
+  static invalidUid() {
+    return new AuthenticationException('Invalid uid', 401, {
+      description: 'Invalid uid',
+    });
+  }
+
   static invalidToken() {
     return new AuthenticationException('Invalid token', 401, {
       description: 'Invalid token',

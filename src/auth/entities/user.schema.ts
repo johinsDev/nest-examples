@@ -13,7 +13,9 @@ export class User {
   })
   email: string;
 
-  @Prop()
+  @Prop({
+    select: false,
+  })
   password: string;
 
   @Prop()
@@ -21,6 +23,7 @@ export class User {
 
   @Prop({
     type: Date,
+    select: false,
   })
   emailVerified: Date;
 }

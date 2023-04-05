@@ -18,14 +18,14 @@ export class AuthPasswordController {
   constructor(private readonly authService: AuthService) {}
 
   // Password auth
-  @Post('sign-up')
-  signupPassword(@Body() createAuthDto: CreateAuthDto) {
+  @Post('/')
+  register(@Body() createAuthDto: CreateAuthDto) {
     return this.authService.create(createAuthDto);
   }
 
   @Post('sign-in')
-  signInPassword(@Body() body: SignInDto) {
-    return this.authService.singIn(body.email, body.password);
+  signIn(@Body() body: SignInDto) {
+    return this.authService.attempt(body.email, body.password);
   }
 
   @UseGuards(AuthGuard)
