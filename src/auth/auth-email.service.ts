@@ -1,12 +1,16 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
-import * as dayjs from 'dayjs';
+import dayjs from 'dayjs';
 import mongoose, { Model } from 'mongoose';
-import * as ms from 'ms';
+import ms from 'ms';
+import { EVENT_LOGIN_EMAIL } from './auth.constants';
 import { AuthenticationException } from './auth.exception';
 import { AuthService } from './auth.service';
 import { CreateAuthEmailDto, VerifyAuthEmailDto } from './dto/auth-email.dto';
+import { MagicLinkEmail } from './emails/magic-link.email';
 import { User, UserDocument } from './entities/user.schema';
 import {
   VerifyToken,
@@ -30,6 +34,8 @@ export class AuthEmailService {
     private readonly hashService: HashService,
     private readonly jwt: JwtService,
     private readonly authService: AuthService,
+    private readonly emitter: EventEmitter2,
+    private readonly configService: ConfigService,
   ) {}
 
   private async createToken(user: UserDocument) {
@@ -113,8 +119,6 @@ export class AuthEmailService {
 
     const token = await this.createToken(user);
 
-    // TODO: emit event to send email with token
-
     const params = new URLSearchParams();
 
     params.append('token', token.token);
@@ -122,8 +126,14 @@ export class AuthEmailService {
 
     const url = new URL(
       `/auth/email/verify?${params.toString()}`,
-      'http://localhost:3000',
+      this.configService.get('auth.email.verify_host'),
     );
+
+    this.emitter.emit(EVENT_LOGIN_EMAIL, {
+      user,
+      verifyToken: token,
+      url: url.toString(),
+    });
 
     return {
       url: url.toString(),
@@ -145,5 +155,19 @@ export class AuthEmailService {
         email: user.email,
       },
     };
+  }
+
+  @OnEvent(EVENT_LOGIN_EMAIL)
+  async onLoginEmail(data: {
+    user: UserDocument;
+    verifyToken: VerifyToken;
+    url: string;
+  }) {
+    new MagicLinkEmail({
+      name: data.user.name,
+      email: data.user.email,
+      url: data.url,
+      token: data.verifyToken.token,
+    }).later();
   }
 }

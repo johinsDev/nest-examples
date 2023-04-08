@@ -15,3 +15,13 @@ async function bootstrap() {
 }
 
 bootstrap();
+// helath
+// helmet
+// compression
+// cache
+// fastify
+// swagger
+// @nestjs/schedule
+// ioredis
+// rate limitting
+// mailer forRootasync

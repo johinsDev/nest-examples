@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
 import { UniqueEmail } from 'src/validation/unique-email';
@@ -27,8 +28,13 @@ import { HashService } from './hash.service';
         schema: LoginTokenSchema,
       },
     ]),
-    JwtModule.register({
-      secret: 'secret',
+    JwtModule.registerAsync({
+      useFactory(config: ConfigService) {
+        return {
+          secret: config.get('auth.JWT.secret'),
+        };
+      },
+      inject: [ConfigService],
     }),
   ],
 })
