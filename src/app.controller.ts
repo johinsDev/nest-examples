@@ -1,7 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 
 @Controller({
-  path: 'api',
+  path: '/app',
 })
 export class AppController {
   @Get('/')

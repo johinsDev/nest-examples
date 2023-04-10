@@ -1,12 +1,28 @@
+import compression from '@fastify/compress';
+import helmet from '@fastify/helmet';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import {
+  FastifyAdapter,
+  NestFastifyApplication,
+} from '@nestjs/platform-fastify';
 import { useContainer } from 'class-validator';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
-    cors: true,
-  });
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter(),
+    {
+      cors: true,
+    },
+  );
+
+  await app.register(helmet);
+
+  await app.register(compression);
+
+  app.setGlobalPrefix('api');
 
   app.useGlobalPipes(new ValidationPipe());
 
@@ -18,11 +34,7 @@ async function bootstrap() {
 
 bootstrap();
 
-// helmet
-// compression
-// fastify
-// tenancy mongo
-// deploy to google cloud run
+// deploy
 //
 // <body style="background: #f9f9f9;">
 // <table width="100%" border="0" cellspacing="20" cellpadding="0"
@@ -55,6 +67,7 @@ bootstrap();
 // </body>
 
 // storage cloudinary/s3
+// tenancy mongo
 // helath
 // cache
 // swagger
@@ -63,6 +76,7 @@ bootstrap();
 // ioredis
 // rate limitting
 // mailer forRootasync
+
 // SMS manager
 // app pushs manager
 // web push manager
